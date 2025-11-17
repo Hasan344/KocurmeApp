@@ -1,0 +1,89 @@
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace KocurmeApp.Api.Controllers
+{
+    [ApiController]
+    [Route("api/files")]
+    public class FileController : ControllerBase
+    {
+        private readonly IMediator _mediator;
+        private readonly ILogger<FileController> _logger;
+
+        public FileController(IMediator mediator, ILogger<FileController> logger)
+        {
+            _mediator = mediator;
+            _logger = logger;
+        }
+
+
+        [HttpPost("export/cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportCheatingAnalysis(
+          [FromBody] Application.Application.Features.FileExports.Commands.ExportCheatingAnalysisCommand command)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Köçürmə analizi export başladı. MinEyniY: {MinEyniY}, MinEhtimal: {MinEhtimal}",
+                    command.MinEyniY,
+                    command.MinEhtimal);
+
+                var result = await _mediator.Send(command);
+
+                _logger.LogInformation("Excel fayl uğurla yaradıldı: {FileName}", result.FileName);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
+        [HttpGet("export/cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportCheatingAnalysisGet(
+            [FromQuery] int minEyniY = 5,
+            [FromQuery] decimal minEhtimal = 60,
+            [FromQuery] string? sheetName = null)
+        {
+            try
+            {
+                var command = new Application.Application.Features.FileExports.Commands.ExportCheatingAnalysisCommand
+                {
+                    MinEyniY = minEyniY,
+                    MinEhtimal = minEhtimal,
+                    SheetName = sheetName ?? "Köçürmə Analizi"
+                };
+
+                _logger.LogInformation(
+                    "Köçürmə analizi export başladı (GET). MinEyniY: {MinEyniY}, MinEhtimal: {MinEhtimal}",
+                    command.MinEyniY,
+                    command.MinEhtimal);
+
+                var result = await _mediator.Send(command);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
+    }
+}
