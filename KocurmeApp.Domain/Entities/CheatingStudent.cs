@@ -8,8 +8,8 @@ namespace KocurmeApp.Domain.Entities
 {
     public class CheatingStudent
     {
-        public int Id { get; set; } // PK
-        public int ExamId { get; set; } // foreign key
+        public int Id { get; set; } 
+        public int ExamId { get; set; } 
         public Exam Exam { get; set; } = default!;
 
         public byte IMT_GUN { get; set; }

@@ -14,6 +14,8 @@ public class AppDbContext : DbContext
     public DbSet<CheatingStudent> CheatingStudents => Set<CheatingStudent>();
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Contingent> Contingents => Set<Contingent>();
+    public DbSet<ImtReh> ImtRehs => Set<ImtReh>();
+    public DbSet<ImtRehBina> ImtRehBinas => Set<ImtRehBina>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,5 +32,10 @@ public class AppDbContext : DbContext
             .WithOne(r => r.Exam)
             .HasForeignKey(r => r.ExamId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ImtRehBina>()
+            .HasNoKey();
+        modelBuilder.Entity<ImtReh>()
+            .HasNoKey();
+
     }
 }

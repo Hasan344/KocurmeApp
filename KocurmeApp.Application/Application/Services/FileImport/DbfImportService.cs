@@ -1,189 +1,160 @@
-﻿using DotNetDBF;
+﻿
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using DbfDataReader;
 using KocurmeApp.Domain.Entities;
-using System.Text;
 
 namespace KocurmeApp.Infrastructure.Services.FileImport
 {
     public class DbfImportService
     {
+
         public async Task<List<CheatingStudent>> ImportCheatingStudentsAsync(Stream fileStream)
         {
             var students = new List<CheatingStudent>();
 
-            using (var reader = new DBFReader(fileStream))
+            string tempPath = Path.GetTempFileName();
+
+            using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
             {
-                object[] record;
-                while ((record = reader.NextRecord()) != null)
+                fileStream.Position = 0;
+                await fileStream.CopyToAsync(fs);
+            }
+
+            var options = new DbfDataReaderOptions
+            {
+                Encoding = Encoding.GetEncoding(1254),
+                SkipDeletedRecords = true
+            };
+
+            using (var dbfReader = new DbfDataReader.DbfDataReader(tempPath, options))
+            {
+                while (dbfReader.Read())
                 {
                     var student = new CheatingStudent
                     {
-                        IMT_GUN = SafeToByte(record[0]),
-                        V_BINA = record[1]?.ToString(),
-                        IS_N1 = Convert.ToInt32(record[2]),
-                        BINA = Convert.ToInt16(record[3]),
-                        ZAL1 = Convert.ToInt16(record[4]),
-                        FENN = SafeToByte(record[5]),
-                        FNADI = record[6]?.ToString(),
-                        IS_N2 = Convert.ToInt32(record[7]),
-                        ZAL2 = Convert.ToInt16(record[8]),
-                        EYNI_D = SafeToByte(record[9]),
-                        EYNI_Y = SafeToByte(record[10]),
-                        EYNI_B = SafeToByte(record[11]),
-                        Y_OXSHAR = Convert.ToDecimal(record[12]),
-                        T_OXSHAR = Convert.ToDecimal(record[13]),
-                        BAL1 = Convert.ToDecimal(record[14]),
-                        BAL2 = Convert.ToDecimal(record[15])
-
+                        IMT_GUN = GetByte(dbfReader, "IMT_GUN"),
+                        V_BINA = GetString(dbfReader, "V_BINA"),
+                        IS_N1 = GetInt(dbfReader, "IS_N1"),
+                        BINA = GetShort(dbfReader, "BINA"),
+                        ZAL1 = GetShort(dbfReader, "ZAL1"),
+                        FENN = GetByte(dbfReader, "FENN"),
+                        FNADI = GetString(dbfReader, "FNADI"),
+                        IS_N2 = GetInt(dbfReader, "IS_N2"),
+                        ZAL2 = GetShort(dbfReader, "ZAL2"),
+                        EYNI_D = GetByte(dbfReader, "EYNI_D"),
+                        EYNI_Y = GetByte(dbfReader, "EYNI_Y"),
+                        EYNI_B = GetByte(dbfReader, "EYNI_B"),
+                        Y_OXSHAR = GetDecimal(dbfReader, "Y_OXSHAR"),
+                        T_OXSHAR = GetDecimal(dbfReader, "T_OXSHAR"),
+                        BAL1 = GetDecimal(dbfReader, "BAL1"),
+                        BAL2 = GetDecimal(dbfReader, "BAL2")
                     };
 
                     students.Add(student);
                 }
             }
 
+            File.Delete(tempPath);
+
             return students;
         }
-        byte SafeToByte(object value)
-        {
-            if (value == null) return 0;
-            if (byte.TryParse(value.ToString(), out var result))
-                return result;
-            return 0;
-        }
-
         public async Task<List<Contingent>> ImportContingentsAsync(Stream fileStream)
         {
             var contingents = new List<Contingent>();
-            using (var reader = new DBFReader(fileStream))
+            string tempPath = Path.GetTempFileName();
+
+            using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
             {
-                object[] record;
-                while ((record = reader.NextRecord()) != null)
+                fileStream.Position = 0;
+                await fileStream.CopyToAsync(fs);
+            }
+
+            var options = new DbfDataReaderOptions
+            {
+                Encoding = Encoding.GetEncoding(1254),
+                SkipDeletedRecords = true
+            };
+
+            using (var dbfReader = new DbfDataReader.DbfDataReader(tempPath, options))
+            {
+                while (dbfReader.Read())
                 {
                     var contingent = new Contingent
                     {
-                        IMT_GUN = SafeToNullableByte(record[0]),
-                        IMT_YERI = SafeToNullableByte(record[1]),
-                        NUM_K = SafeToNullableByte(record[2]),
-                        YASH_KATEQ = SafeToNullableByte(record[3]),
-                        IZAHI = CleanString(record[4]?.ToString()),
-                        SEC = SafeToNullableByte(record[5]),
-                        TIP_OTUR = SafeToNullableByte(record[6]),
-                        SAYI = SafeToNullableShort(record[7]),
-                        SAYI0 = CleanString(record[8]?.ToString())
+                        IMT_GUN = GetNullableByte(dbfReader, "IMT_GUN"),
+                        IMT_YERI = GetNullableByte(dbfReader, "IMT_YERI"),
+                        NUM_K = GetNullableByte(dbfReader, "NUM_K"),
+                        YASH_KATEQ = GetNullableByte(dbfReader, "YASH_KATEQ"),
+                        IZAHI = GetString(dbfReader, "IZAHI"),
+                        SEC = GetNullableByte(dbfReader, "SEC"),
+                        TIP_OTUR = GetNullableByte(dbfReader, "TIP_OTUR"),
+                        SAYI = GetNullableShort(dbfReader, "SAYI"),
+                        SAYI0 = GetString(dbfReader, "SAYI0")
                     };
                     contingents.Add(contingent);
                 }
             }
+
+            File.Delete(tempPath);
             return contingents;
         }
 
-        private string CleanString(string input)
+        // Yeni helper metodlar (nullable tipler için)
+        private byte? GetNullableByte(DbfDataReader.DbfDataReader reader, string col)
         {
-            if (string.IsNullOrEmpty(input))
-                return null;
-
             try
             {
-                // 1. Null byte'ları temizle
-                input = input.Replace("\0", "");
-
-                // 2. Encoding düzelt
-                byte[] bytes = Encoding.GetEncoding("ISO-8859-1").GetBytes(input);
-                string result = Encoding.GetEncoding(1254).GetString(bytes);
-
-                // 3. Trim ve kontrol
-                result = result.Trim();
-
-                return string.IsNullOrEmpty(result) ? null : result;
+                var value = reader[col];
+                if (value == null || value == DBNull.Value) return null;
+                return Convert.ToByte(value);
             }
-            catch
-            {
-                // Fallback: sadece trim
-                return input.Trim();
-            }
+            catch { return null; }
         }
 
-        private byte? SafeToNullableByte(object value)
+        private short? GetNullableShort(DbfDataReader.DbfDataReader reader, string col)
         {
-            if (value == null || value == DBNull.Value)
-                return null;
-
             try
             {
-                // Eğer zaten byte ise direkt dön
-                if (value is byte b)
-                    return b;
-
-                string strValue = value.ToString().Trim();
-
-                if (string.IsNullOrEmpty(strValue))
-                    return null;
-
-                // Sadece rakamları al
-                strValue = new string(strValue.Where(char.IsDigit).ToArray());
-
-                if (string.IsNullOrEmpty(strValue))
-                    return null;
-
-                if (byte.TryParse(strValue, out byte result))
-                    return result;
-
-                return null;
+                var value = reader[col];
+                if (value == null || value == DBNull.Value) return null;
+                return Convert.ToInt16(value);
             }
-            catch
-            {
-                return null;
-            }
+            catch { return null; }
         }
-
-        private short? SafeToNullableShort(object value)
+        private byte GetByte(DbfDataReader.DbfDataReader reader, string col)
         {
-            if (value == null || value == DBNull.Value)
-                return null;
-
-            try
-            {
-                // Eğer zaten short/int ise direkt dön
-                if (value is short s)
-                    return s;
-                if (value is int i && i >= short.MinValue && i <= short.MaxValue)
-                    return (short)i;
-
-                string strValue = value.ToString().Trim();
-
-                if (string.IsNullOrEmpty(strValue))
-                    return null;
-
-                // Rakamlar ve eksi işareti
-                strValue = new string(strValue.Where(c => char.IsDigit(c) || c == '-').ToArray());
-
-                if (string.IsNullOrEmpty(strValue) || strValue == "-")
-                    return null;
-
-                if (short.TryParse(strValue, out short result))
-                    return result;
-
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
+            try { return Convert.ToByte(reader[col]); }
+            catch { return 0; }
         }
-        //byte? SafeToNullableByte(object value)
-        //{
-        //    if (value == null) return null;
-        //    if (byte.TryParse(value.ToString(), out var result))
-        //        return result;
-        //    return null;
-        //}
 
-        //short? SafeToNullableShort(object value)
-        //{
-        //    if (value == null) return null;
-        //    if (short.TryParse(value.ToString(), out var result))
-        //        return result;
-        //    return null;
-        //}
+        private short GetShort(DbfDataReader.DbfDataReader reader, string col)
+        {
+            try { return Convert.ToInt16(reader[col]); }
+            catch { return 0; }
+        }
+
+        private int GetInt(DbfDataReader.DbfDataReader reader, string col)
+        {
+            try { return Convert.ToInt32(reader[col]); }
+            catch { return 0; }
+        }
+
+        private decimal GetDecimal(DbfDataReader.DbfDataReader reader, string col)
+        {
+            try { return Convert.ToDecimal(reader[col]); }
+            catch { return 0; }
+        }
+
+        private string GetString(DbfDataReader.DbfDataReader reader, string col)
+        {
+            try { return reader[col]?.ToString().Trim() ?? ""; }
+            catch { return ""; }
+        }
     }
+
+
 }

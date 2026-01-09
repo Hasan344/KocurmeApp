@@ -4,6 +4,7 @@ using KocurmeApp.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KocurmeApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260109051504_imtreh_tables")]
+    partial class imtreh_tables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -156,177 +159,6 @@ namespace KocurmeApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Exams");
-                });
-
-            modelBuilder.Entity("KocurmeApp.Domain.Entities.ImtReh", b =>
-                {
-                    b.Property<string>("Adi")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("ADI");
-
-                    b.Property<short?>("Age")
-                        .HasColumnType("smallint")
-                        .HasColumnName("AGE");
-
-                    b.Property<string>("Baba")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("BABA");
-
-                    b.Property<string>("BitirUn")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("BITIR_UN");
-
-                    b.Property<short?>("Bolme")
-                        .HasColumnType("smallint")
-                        .HasColumnName("BOLME");
-
-                    b.Property<string>("Cinsi")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("cinsi");
-
-                    b.Property<DateTime?>("ContractDate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("contract_date");
-
-                    b.Property<string>("ContractNumb")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("contract_numb");
-
-                    b.Property<string>("DoktorM")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("DOKTOR_M");
-
-                    b.Property<string>("ElmiDer")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("ELMI_DER");
-
-                    b.Property<short?>("ExamId")
-                        .HasColumnType("smallint")
-                        .HasColumnName("exam_id");
-
-                    b.Property<string>("IsYeri")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasColumnName("IS_YERI");
-
-                    b.Property<string>("Ixtisasi")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("IXTISASI");
-
-                    b.Property<string>("NamizM")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("NAMIZ_M");
-
-                    b.Property<byte?>("NumExam")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("num_exam");
-
-                    b.Property<string>("NumPasp")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("NUM_PASP");
-
-                    b.Property<string>("QiyMet")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("QIYMET");
-
-                    b.Property<byte?>("RayonId")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("Rayon_id");
-
-                    b.Property<byte?>("RegId")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("reg_id");
-
-                    b.Property<bool?>("Sechildi")
-                        .HasColumnType("bit")
-                        .HasColumnName("SECHILDI");
-
-                    b.Property<string>("SelectedDistrictForExam")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("SelectedDistrictForExam");
-
-                    b.Property<string>("SeriyaP")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("SERIYA_P");
-
-                    b.Property<string>("Soy")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("SOY");
-
-                    b.Property<string>("Tarix")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("TARIX");
-
-                    b.Property<string>("TelEht")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("TEL_EHT");
-
-                    b.Property<string>("TelEv")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("TEL_EV");
-
-                    b.Property<string>("TelIs")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("TEL_IS");
-
-                    b.Property<string>("Unvan")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
-                        .HasColumnName("UNVAN");
-
-                    b.Property<int?>("VNum")
-                        .HasColumnType("int")
-                        .HasColumnName("V_NUM");
-
-                    b.Property<string>("Vezifesi")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("VEZIFESI");
-
-                    b.ToTable("imtreh");
-                });
-
-            modelBuilder.Entity("KocurmeApp.Domain.Entities.ImtRehBina", b =>
-                {
-                    b.Property<short?>("BKod")
-                        .HasColumnType("smallint")
-                        .HasColumnName("B_KOD");
-
-                    b.Property<short?>("ExamId")
-                        .HasColumnType("smallint")
-                        .HasColumnName("exam_id");
-
-                    b.Property<int?>("IR")
-                        .HasColumnType("int")
-                        .HasColumnName("i_r");
-
-                    b.Property<string>("VBina")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("v_bina");
-
-                    b.Property<byte?>("VN")
-                        .HasColumnType("tinyint")
-                        .HasColumnName("VN");
-
-                    b.ToTable("imtrehbina");
                 });
 
             modelBuilder.Entity("KocurmeApp.Domain.Entities.Room", b =>

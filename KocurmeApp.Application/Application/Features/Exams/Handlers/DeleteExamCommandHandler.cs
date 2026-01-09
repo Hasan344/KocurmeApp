@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace KocurmeApp.Application.Features.Exams.Handlers
 {
-    public class DeleteExamCommandHandler : IRequestHandler<DeleteContingentByExamCommand, bool>
+    public class DeleteExamCommandHandler : IRequestHandler<DeleteExamCommand, bool>
     {
         private readonly AppDbContext _context;
 
@@ -17,21 +17,21 @@ namespace KocurmeApp.Application.Features.Exams.Handlers
             _context = context;
         }
 
-        public async Task<bool> Handle(DeleteContingentByExamCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(DeleteExamCommand request, CancellationToken cancellationToken)
         {
             var exam = await _context.Exams
                 .Include(e => e.Rooms)
                 .Include(e => e.CheatingStudents)
+                .Include(e => e.Contingents)
                 .FirstOrDefaultAsync(e => e.Id == request.ExamId, cancellationToken);
 
             if (exam == null)
                 return false;
 
-            // Alt ilişkileri sil
             _context.Rooms.RemoveRange(exam.Rooms);
             _context.CheatingStudents.RemoveRange(exam.CheatingStudents);
+            _context.Contingents.RemoveRange(exam.Contingents);
 
-            // Sınavı sil
             _context.Exams.Remove(exam);
 
             await _context.SaveChangesAsync(cancellationToken);

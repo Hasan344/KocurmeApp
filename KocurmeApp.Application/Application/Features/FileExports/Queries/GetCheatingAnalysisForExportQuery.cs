@@ -10,6 +10,7 @@ namespace KocurmeApp.Application.Application.Features.FileExports.Queries
 {
     public class GetCheatingAnalysisForExportQuery : IRequest<List<CheatingAnalysisExportDTO>>
     {
+        public int ExamId { get; set; }
         public int MinEyniY { get; set; } = 5;
         public decimal MinEhtimal { get; set; } = 60;
     }

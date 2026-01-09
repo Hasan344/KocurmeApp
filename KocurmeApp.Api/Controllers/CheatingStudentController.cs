@@ -22,7 +22,6 @@ namespace KocurmeApp.Api.Controllers
             _mediator = mediator;
         }
 
-
         [HttpPost("cheating-students")]
         public async Task<IActionResult> ImportCheatingStudents([FromForm] ImportCheatingStudentsCommand command)
         {
@@ -41,7 +40,5 @@ namespace KocurmeApp.Api.Controllers
             var result = await _mediator.Send(new DeleteCheatingStudentsByExamCommand(examId));
             return result ? Ok("All cheating students for the exam deleted.") : NotFound("No cheating students found for this exam.");
         }
-
     }
-
 }

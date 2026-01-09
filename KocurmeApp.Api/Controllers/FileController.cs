@@ -52,21 +52,28 @@ namespace KocurmeApp.Api.Controllers
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ExportCheatingAnalysisGet(
+            [FromQuery] int examId,
             [FromQuery] int minEyniY = 5,
             [FromQuery] decimal minEhtimal = 60,
             [FromQuery] string? sheetName = null)
         {
             try
             {
+                if (examId <= 0)
+                {
+                    return BadRequest(new { message = "ExamId məcburidir və müsbət olmalıdır" });
+                }
                 var command = new Application.Application.Features.FileExports.Commands.ExportCheatingAnalysisCommand
                 {
+                    ExamId = examId,
                     MinEyniY = minEyniY,
                     MinEhtimal = minEhtimal,
                     SheetName = sheetName ?? "Köçürmə Analizi"
                 };
 
                 _logger.LogInformation(
-                    "Köçürmə analizi export başladı (GET). MinEyniY: {MinEyniY}, MinEhtimal: {MinEhtimal}",
+                    "Köçürmə analizi export başladı (GET). Imtahan id: {ExamId} MinEyniY: {MinEyniY}, MinEhtimal: {MinEhtimal}",
+                    command.ExamId,
                     command.MinEyniY,
                     command.MinEhtimal);
 

@@ -37,10 +37,10 @@ namespace KocurmeApp.Application.Features.CheatingStudents.Handlers;
 
         foreach (var student in students)
         {
-            student.ExamId = exam.Id; 
+            student.ExamId = exam.Id;
             exam.Contingents.Add(student);
         }
-
+             
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;

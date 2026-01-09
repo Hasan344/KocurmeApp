@@ -43,4 +43,10 @@ public class ExamsController : ControllerBase
         var result = await _mediator.Send(new DeleteExamCommand(examId));
         return result ? Ok("Exam and related data deleted successfully!") : NotFound("Exam not found!");
     }
+    [HttpGet("lookup")]
+    public async Task<IActionResult> GetLookup()
+    {
+        var result = await _mediator.Send(new GetExamLookupQuery());
+        return Ok(result);
+    }
 }

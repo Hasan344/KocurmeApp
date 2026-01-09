@@ -157,7 +157,6 @@ namespace KocurmeApp.Application.Application.Services
                 row++;
             }
 
-            // Auto-fit kolonlar
             worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
 
             return await package.GetAsByteArrayAsync();

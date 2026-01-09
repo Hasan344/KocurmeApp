@@ -39,10 +39,12 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(KocurmeApp.Application.AssemblyMarker).Assembly));
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowAll", policy =>
+    {
         policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader()); 
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 // DBF servisini kaydet
 builder.Services.AddTransient<DbfImportService>();
@@ -58,8 +60,9 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty;
     });
 }
+app.UseCors("AllowAll");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

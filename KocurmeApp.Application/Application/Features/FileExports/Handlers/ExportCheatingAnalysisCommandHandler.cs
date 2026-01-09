@@ -25,6 +25,7 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Commands.Export
         {
             var query = new FileExports.Queries.GetCheatingAnalysisForExportQuery
             {
+                ExamId = request.ExamId,
                 MinEyniY = request.MinEyniY,
                 MinEhtimal = request.MinEhtimal
             };

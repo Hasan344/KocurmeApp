@@ -34,7 +34,7 @@ namespace KocurmeApp.Api.Controllers
         [HttpDelete("delete-by-exam/{examId}")]
         public async Task<IActionResult> DeleteContingentsByExam(int examId)
         {
-            var result = await _mediator.Send(new DeleteContingentByExamCommand(examId));
+            var result = await _mediator.Send(new DeleteContingentByExamCommand (examId));
             return result ? Ok("All Contingents for the exam deleted.") : NotFound("No contingents found for this exam.");
         }
     }
