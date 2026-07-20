@@ -8,10 +8,9 @@ using System.Threading.Tasks;
 
 namespace KocurmeApp.Application.Application.Features.FileExports.Queries
 {
-    public class GetCheatingAnalysisForExportQuery : IRequest<CheatingAnalysisExportResult>
+    public class GetSupervisorCheatingAnalysisForExportQuery : IRequest<SupervisorCheatingAnalysisExportResult>
     {
-        public int ExamId { get; set; }
-        public int MinEyniY { get; set; } = 5;
-        public decimal MinEhtimal { get; set; } = 70;
+        public int CheatingExamId { get; set; } // 5
+        public int SupervisorExamId { get; set; } // 456
     }
 }

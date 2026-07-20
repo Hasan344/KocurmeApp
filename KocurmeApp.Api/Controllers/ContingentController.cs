@@ -1,9 +1,5 @@
-﻿using KocurmeApp.Application.Application.Features.CheatingStudents.Commands;
-using KocurmeApp.Application.Application.Features.CheatingStudents.Queries;
-using KocurmeApp.Application.Application.Features.Contingents.Queries;
-using KocurmeApp.Application.Features.CheatingStudents.Commands;
+﻿using KocurmeApp.Application.Application.Features.Contingents.Queries;
 using KocurmeApp.Application.Features.Contingents.Commands;
-using KocurmeApp.Infrastructure;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -103,7 +103,6 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
             return contingents;
         }
 
-        // Yeni helper metodlar (nullable tipler için)
         private byte? GetNullableByte(DbfDataReader.DbfDataReader reader, string col)
         {
             try

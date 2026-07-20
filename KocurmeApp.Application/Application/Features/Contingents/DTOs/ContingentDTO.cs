@@ -11,7 +11,7 @@ namespace KocurmeApp.Application.Application.Features.Contingents.DTOs
         public int Id { get; set; }
         public byte? IMT_GUN { get; set; }
         public byte? IMT_YERI { get; set; }
-        public byte? NUM_K { get; set; }
+        public int? NUM_K { get; set; }
         public byte? YASH_KATEQ { get; set; }
         public string? IZAHI { get; set; }
         public byte? SEC { get; set; }

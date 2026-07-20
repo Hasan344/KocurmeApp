@@ -54,7 +54,7 @@ namespace KocurmeApp.Api.Controllers
         public async Task<IActionResult> ExportCheatingAnalysisGet(
             [FromQuery] int examId,
             [FromQuery] int minEyniY = 5,
-            [FromQuery] decimal minEhtimal = 60,
+            [FromQuery] decimal minEhtimal = 70,
             [FromQuery] string? sheetName = null)
         {
             try
@@ -91,6 +91,80 @@ namespace KocurmeApp.Api.Controllers
                 return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
             }
         }
+        // FileController-ə əlavə edin:
+        [HttpGet("export/supervisor-cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportSupervisorCheatingAnalysisGet(
+            [FromQuery] int cheatingExamId = 5,
+            [FromQuery] int supervisorExamId = 456,
+            [FromQuery] string? sheetName = null)
+        {
+            try
+            {
+                if (cheatingExamId <= 0 || supervisorExamId <= 0)
+                {
+                    return BadRequest(new { message = "ExamId-lər məcburidir və müsbət olmalıdır" });
+                }
+
+                var command = new Application.Application.Features.FileExports.Commands.ExportSupervisorCheatingAnalysisCommand
+                {
+                    CheatingExamId = cheatingExamId,
+                    SupervisorExamId = supervisorExamId,
+                    SheetName = sheetName ?? "Nəzarətçi Köçürmə Analizi"
+                };
+
+                _logger.LogInformation(
+                    "Nəzarətçi köçürmə analizi export başladı. CheatingExamId: {CheatingExamId}, SupervisorExamId: {SupervisorExamId}",
+                    command.CheatingExamId,
+                    command.SupervisorExamId);
+
+                var result = await _mediator.Send(command);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Nəzarətçi analizi Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
+        [HttpPost("export/supervisor-cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportSupervisorCheatingAnalysis(
+            [FromBody] Application.Application.Features.FileExports.Commands.ExportSupervisorCheatingAnalysisCommand command)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Nəzarətçi köçürmə analizi export başladı. CheatingExamId: {CheatingExamId}, SupervisorExamId: {SupervisorExamId}",
+                    command.CheatingExamId,
+                    command.SupervisorExamId);
+
+                var result = await _mediator.Send(command);
+
+                _logger.LogInformation("Excel fayl uğurla yaradıldı: {FileName}", result.FileName);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
 
     }
 }

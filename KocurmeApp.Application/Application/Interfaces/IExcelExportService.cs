@@ -9,15 +9,10 @@ namespace KocurmeApp.Application.Interfaces
         /// Köçürmə analiz datalarını Excel faylına export edir
         /// </summary>
         Task<byte[]> ExportCheatingAnalysisToExcelAsync(
-            List<CheatingAnalysisExportDTO> data,
+            CheatingAnalysisExportResult data,
             string sheetName = "Sheet1");
-
-        /// <summary>
-        /// Generic Excel export metodu (gələcək üçün)
-        /// </summary>
-        Task<byte[]> ExportToExcelAsync<T>(
-            IEnumerable<T> data,
-            string sheetName = "Sheet1",
-            Dictionary<string, string>? columnHeaders = null);
+        Task<byte[]> ExportSupervisorCheatingAnalysisToExcelAsync(
+        SupervisorCheatingAnalysisExportResult data,
+        string sheetName = "Supervisor Analysis");
     }
 }

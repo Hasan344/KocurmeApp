@@ -8,14 +8,23 @@ namespace KocurmeApp.Application.Application.Features.FileExports.DTOs
 {
     public class CheatingAnalysisExportDTO
     {
-        public string Zal { get; set; } = default!;
-        public int? ZaldaKocurenAbituriyentlerinSayi { get; set; }
-        public int? KocurulenFenlerinUmumiSayi { get; set; }
-        public int? ZaldaOlanAbituriyentlerinSayi { get; set; }
-        public decimal? ZaldaKocurmeFaizi1 { get; set; }
-        public decimal? ZaldaKocurmeFaizi2 { get; set; }
-        public decimal? Kolon3 { get; set; }
-        public decimal? Kolon4 { get; set; }
-        public decimal? Kolon5 { get; set; }
+     public string Zal { get; set; }
+     public int? KontingentKodu { get; set; }
+     public string KontingentYasi { get; set; }
+
+     public int? ZaldaKocurenAbituriyentlerinSayi { get; set; }
+     public int? KocurulenFenlerinUmumiSayi { get; set; }
+     public int? ZaldaOlanAbituriyentlerinSayi { get; set; }
+
+     public decimal? ZaldaKocurmeFaizi1 { get; set; }
+     public decimal? ZaldaKocurmeFaizi2 { get; set; }
+
+     public decimal? Kolon3 { get; set; }
+     public decimal? Kolon4 { get; set; }
+     public decimal? Kolon5 { get; set; }
+     public decimal? Kolon5BolunmusEmsal { get; set; }
+
+     public string ZaldaKocurmeninDerecesi { get; set; }
+
     }
 }

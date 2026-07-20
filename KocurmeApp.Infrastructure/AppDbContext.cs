@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Contingent> Contingents => Set<Contingent>();
     public DbSet<ImtReh> ImtRehs => Set<ImtReh>();
     public DbSet<ImtRehBina> ImtRehBinas => Set<ImtRehBina>();
+    public DbSet<CheatingRoomStatsResult> CheatingRoomStatsResults => Set<CheatingRoomStatsResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ImtRehBina>()
             .HasNoKey();
         modelBuilder.Entity<ImtReh>()
+            .HasNoKey();
+        modelBuilder.Entity<CheatingRoomStatsResult>()
             .HasNoKey();
 
     }

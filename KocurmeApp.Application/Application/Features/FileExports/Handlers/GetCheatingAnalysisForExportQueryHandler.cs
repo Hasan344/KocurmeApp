@@ -1,5 +1,5 @@
-﻿
-using KocurmeApp.Application.Application.Features.FileExports.DTOs;
+﻿using KocurmeApp.Application.Application.Features.FileExports.DTOs;
+using KocurmeApp.Application.Application.Features.FileExports.Queries;
 using KocurmeApp.Application.Interfaces;
 using KocurmeApp.Infrastructure;
 using MediatR;
@@ -9,10 +9,20 @@ using Microsoft.Extensions.Logging;
 namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetCheatingAnalysisForExport
 {
     public class GetCheatingAnalysisForExportQueryHandler
-        : IRequestHandler<FileExports.Queries.GetCheatingAnalysisForExportQuery, List<CheatingAnalysisExportDTO>>
+        : IRequestHandler<GetCheatingAnalysisForExportQuery,CheatingAnalysisExportResult>
     {
         private readonly AppDbContext _context;
         private readonly ILogger<GetCheatingAnalysisForExportQueryHandler> _logger;
+
+        // Age category coefficients
+        private static readonly Dictionary<int, decimal> AgeCategories = new()
+        {
+            { 1, 1.00m },
+            { 2, 1.58m },
+            { 3, 1.58m },
+            { 4, 3.68m },
+            { 0, 1.00m }
+        };
 
         public GetCheatingAnalysisForExportQueryHandler(
             AppDbContext context,
@@ -22,141 +32,154 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
             _logger = logger;
         }
 
-        public async Task<List<CheatingAnalysisExportDTO>> Handle(
-            FileExports.Queries.GetCheatingAnalysisForExportQuery request,
+        public async Task<CheatingAnalysisExportResult> Handle(
+            GetCheatingAnalysisForExportQuery request,
             CancellationToken cancellationToken)
         {
-            // Debug log - ExamId yoxla
-            _logger.LogInformation(
-                "Köçürmə analizi sorğusu başladı. ExamId: {ExamId}, MinEyniY: {MinEyniY}, MinEhtimal: {MinEhtimal}",
-                request.ExamId,
-                request.MinEyniY,
-                request.MinEhtimal);
+            var t1 = await (
+                from cs in _context.CheatingStudents
+                join r in _context.Rooms on cs.ZAL1 equals r.Z_KOD
+                join c in _context.Contingents
+                on new { r.ExamId, NumK = r.GR_FL }
+                equals new { c.ExamId, NumK = c.NUM_K.ToString() }
 
-            // ExamId validasiyası
-            if (request.ExamId <= 0)
-            {
-                _logger.LogWarning("ExamId düzgün deyil: {ExamId}", request.ExamId);
-                return new List<CheatingAnalysisExportDTO>();
-            }
+                where cs.ExamId == request.ExamId
+                      && r.ExamId == request.ExamId
+                      && cs.EYNI_Y >= request.MinEyniY
+                select new
+                {
+                    cs.ZAL1,
+                    cs.IS_N1,
+                    cs.FENN,
+                    Ehtimal = Math.Round(
+                        ((decimal)(cs.EYNI_Y + cs.EYNI_B) / (30 - cs.EYNI_D)) * 100, 2),
+                    Oda_Student_Sayisi = r.KOL_ABT,
+                    YASH_KATEQ = c.YASH_KATEQ
+                }
+            ).ToListAsync(cancellationToken);
 
-            var t1 = await (from cs in _context.CheatingStudents
-                            join r in _context.Rooms on cs.ZAL1 equals r.Z_KOD
-                            where cs.ExamId == request.ExamId &&
-                                  cs.EYNI_Y >= request.MinEyniY
-                            select new
-                            {
-                                cs.ZAL1,
-                                cs.IS_N1,
-                                cs.FENN,
-                                cs.EYNI_Y,
-                                cs.EYNI_B,
-                                cs.EYNI_D,
-                                Ehtimal = Math.Round(
-                                    ((decimal)(cs.EYNI_Y + cs.EYNI_B) / (30 - cs.EYNI_D)) * 100,
-                                    2
-                                ),
-                                Oda_Student_Sayisi = r.KOL_ABT
-                            })
-                           .ToListAsync(cancellationToken);
 
-            _logger.LogInformation(
-                "ExamId {ExamId} üçün {Count} qeyd tapıldı (MinEyniY filtrindən sonra)",
-                request.ExamId,
-                t1.Count);
-
-            if (!t1.Any())
-            {
-                _logger.LogInformation("ExamId {ExamId} üçün heç bir məlumat tapılmadı", request.ExamId);
-                return new List<CheatingAnalysisExportDTO>();
-            }
-
-            var t2 = t1.Where(x => x.Ehtimal >= request.MinEhtimal).ToList();
-
-            _logger.LogInformation(
-                "MinEhtimal {MinEhtimal} filtrindən sonra {Count} qeyd qaldı",
-                request.MinEhtimal,
-                t2.Count);
-
-            if (!t2.Any())
-            {
-                _logger.LogInformation("MinEhtimal filtri tətbiq edildikdən sonra heç bir məlumat qalmadı");
-                return new List<CheatingAnalysisExportDTO>();
-            }
-
-            var summary = t2.GroupBy(x => x.ZAL1)
-                           .Select(g => new
-                           {
-                               ZAL1 = g.Key,
-                               Kopya_Ceken_Student_Sayisi = g.Select(x => x.IS_N1).Distinct().Count(),
-                               Kopya_Cekilen_Fenn_Sayisi = g.Select(x => x.FENN).Distinct().Count(),
-                               Oda_Student_Sayisi = g.Max(x => x.Oda_Student_Sayisi)
-                           })
-                           .ToList();
+            var summary = t1
+                .GroupBy(x => new { x.ZAL1, x.YASH_KATEQ })
+                .Select(g => new
+                {
+                    g.Key.ZAL1,
+                    g.Key.YASH_KATEQ,
+                    KopyaCeken = g.Select(x => x.IS_N1).Distinct().Count(),
+                    KopyaFen = g.Select(x => x.FENN).Distinct().Count(),
+                    OdaSayisi = g.Max(x => x.Oda_Student_Sayisi)
+                }).ToList();
 
             var t3 = summary.Select(s => new
             {
-                Zal = s.ZAL1,
-                Kopya_Ceken_Student_Sayisi = s.Kopya_Ceken_Student_Sayisi,
-                Kopya_Cekilen_Fenn_Sayisi = s.Kopya_Cekilen_Fenn_Sayisi,
-                Oda_Student_Sayisi = s.Oda_Student_Sayisi,
-                ZaldaKocurmeFaizi1 = s.Oda_Student_Sayisi > 0
-                    ? Math.Round(((decimal)s.Kopya_Cekilen_Fenn_Sayisi / (s.Oda_Student_Sayisi * 3)) * 100, 2)
-                    : 0m,
-                ZaldaKocurmeFaizi2 = s.Oda_Student_Sayisi > 0
-                    ? Math.Round(((decimal)s.Kopya_Ceken_Student_Sayisi / s.Oda_Student_Sayisi) * 100, 2)
-                    : 0m
+                s.ZAL1,
+                s.YASH_KATEQ,
+                s.KopyaCeken,
+                s.KopyaFen,
+                s.OdaSayisi,
+                Faiz1 = s.OdaSayisi > 0
+                    ? Math.Round((decimal)s.KopyaFen / (s.OdaSayisi * 3) * 100, 2)
+                    : 0,
+                Faiz2 = s.OdaSayisi > 0
+                    ? Math.Round((decimal)s.KopyaCeken / s.OdaSayisi * 100, 2)
+                    : 0
             }).ToList();
 
-            var avgFaiz1 = t3.Any() ? t3.Average(x => x.ZaldaKocurmeFaizi1) : 0m;
-            var avgFaiz2 = t3.Any() ? t3.Average(x => x.ZaldaKocurmeFaizi2) : 0m;
+            var avgFaiz1 = t3.Average(x => x.Faiz1);
+            var avgFaiz2 = t3.Average(x => x.Faiz2);
 
-            var t4 = t3.Select(x => new
-            {
-                x.Zal,
-                x.Kopya_Ceken_Student_Sayisi,
-                x.Kopya_Cekilen_Fenn_Sayisi,
-                x.Oda_Student_Sayisi,
-                x.ZaldaKocurmeFaizi1,
-                x.ZaldaKocurmeFaizi2,
-                Kolon3 = avgFaiz1 > 0 ? Math.Round(x.ZaldaKocurmeFaizi1 / avgFaiz1, 2) : 0m,
-                Kolon4 = avgFaiz2 > 0 ? Math.Round(x.ZaldaKocurmeFaizi2 / avgFaiz2, 2) : 0m
-            }).ToList();
+            var ageCoeff = new Dictionary<int, decimal>
+    {
+        { 1, 1.00m },
+        { 2, 1.58m },
+        { 3, 1.58m },
+        { 4, 3.68m },
+        { 0, 1.00m }
+    };
 
-            var t5 = t4.Select(x => new CheatingAnalysisExportDTO
+            var result = t3.Select(x =>
             {
-                Zal = x.Zal.ToString(),
-                ZaldaKocurenAbituriyentlerinSayi = x.Kopya_Ceken_Student_Sayisi,
-                KocurulenFenlerinUmumiSayi = x.Kopya_Cekilen_Fenn_Sayisi,
-                ZaldaOlanAbituriyentlerinSayi = x.Oda_Student_Sayisi,
-                ZaldaKocurmeFaizi1 = x.ZaldaKocurmeFaizi1,
-                ZaldaKocurmeFaizi2 = x.ZaldaKocurmeFaizi2,
-                Kolon3 = x.Kolon3,
-                Kolon4 = x.Kolon4,
-                Kolon5 = Math.Round((x.Kolon3 + x.Kolon4) / 2, 2)
-            }).ToList();
+                var kolon3 = avgFaiz1 > 0 ? Math.Round(x.Faiz1 / avgFaiz1, 2) : 0;
+                var kolon4 = avgFaiz2 > 0 ? Math.Round(x.Faiz2 / avgFaiz2, 2) : 0;
+                var kolon5 = Math.Round((kolon3 + kolon4) / 2, 2);
+                var emsal = ageCoeff.GetValueOrDefault(x.YASH_KATEQ ?? 0, 1);
+                var kolon5Bolunmus = Math.Round(kolon5 / emsal, 2);
 
-            var avgRow = new CheatingAnalysisExportDTO
+                return new CheatingAnalysisExportDTO
+                {
+                    Zal = x.ZAL1.ToString(),
+                    KontingentKodu = x.YASH_KATEQ,
+                    KontingentYasi = x.YASH_KATEQ switch
+                    {
+                        1 => "<18",
+                        2 => "18~20",
+                        4 => ">20",
+                        _ => "18~20"
+                    },
+                    ZaldaKocurenAbituriyentlerinSayi = x.KopyaCeken,
+                    KocurulenFenlerinUmumiSayi = x.KopyaFen,
+                    ZaldaOlanAbituriyentlerinSayi = x.OdaSayisi,
+                    ZaldaKocurmeFaizi1 = x.Faiz1,
+                    ZaldaKocurmeFaizi2 = x.Faiz2,
+                    Kolon3 = kolon3,
+                    Kolon4 = kolon4,
+                    Kolon5 = kolon5,
+                    Kolon5BolunmusEmsal = kolon5Bolunmus,
+                    ZaldaKocurmeninDerecesi =
+                        kolon5Bolunmus < 0.7m ? "Zəif" :
+                        kolon5Bolunmus >= 1.4m ? "Ağır" :
+                        "Orta"
+                };
+            }).OrderBy(x => x.Kolon5BolunmusEmsal).ToList();
+
+            // Statistika hesablama
+            var statistics = CalculateStatistics(result);
+
+            return new CheatingAnalysisExportResult
             {
-                Zal = "1",
-                ZaldaKocurenAbituriyentlerinSayi = null,
-                KocurulenFenlerinUmumiSayi = null,
-                ZaldaOlanAbituriyentlerinSayi = null,
-                ZaldaKocurmeFaizi1 = Math.Round(avgFaiz1, 2),
-                ZaldaKocurmeFaizi2 = Math.Round(avgFaiz2, 2),
-                Kolon3 = null,
-                Kolon4 = null,
-                Kolon5 = null
+                AnalysisData = result,
+                Statistics = statistics
             };
+        }
 
-            t5.Add(avgRow);
+        private List<CheatingStatisticsDTO> CalculateStatistics(List<CheatingAnalysisExportDTO> data)
+        {
+            var ranges = new List<(decimal Min, decimal Max, string Label)>
+        {
+            (0.0m, 0.2m, "(0-0.2]"),
+            (0.2m, 0.4m, "(0.2-0.4]"),
+            (0.4m, 0.6m, "(0.4-0.6]"),
+            (0.6m, 0.8m, "(0.6-0.8]"),
+            (0.8m, 1.0m, "(0.8-1]"),
+            (1.0m, 1.2m, "(1-1.2]"),
+            (1.2m, 1.4m, "(1.2-1.4]"),
+            (1.4m, 1.6m, "(1.4-1.6]"),
+            (1.6m, 1.8m, "(1.6-1.8]"),
+            (1.8m, 2.0m, "(1.8-2]"),
+            (2.0m, 2.2m, "(2-2.2]"),
+            (2.2m, 2.4m, "(2.2-2.4]"),
+            (2.4m, 2.6m, "(2.4-2.6]"),
+            (2.6m, 2.8m, "(2.6-2.8]"),
+            (2.8m, 3.0m, "(2.8-3]"),
+            (3.0m, 3.2m, "(3-3.2]"),
+            (3.2m, 3.4m, "(3.2-3.4]"),
+            (3.4m, 3.6m, "(3.4-3.6]"),
+            (3.6m, 3.8m, "(3.6-3.8]"),
+            (3.8m, 4.0m, "(3.8-4]"),
+            (4.0m, 4.2m, "(4-4.2]"),
+            (4.2m, 4.4m, "(4.2-4.4]")
+        };
 
-            _logger.LogInformation(
-                "Köçürmə analizi sorğusu tamamlandı. ExamId: {ExamId}, Nəticə sayı: {Count}",
-                request.ExamId,
-                t5.Count);
+            var statistics = ranges.Select(range => new CheatingStatisticsDTO
+            {
+                KocurmeFaiziAraligi = range.Label,
+                KocurmeOlanZallarinSayi = data.Count(x =>
+                    x.Kolon5BolunmusEmsal > range.Min &&
+                    x.Kolon5BolunmusEmsal <= range.Max)
+            }).ToList();
 
-            return t5.OrderByDescending(x => x.Zal).ToList();
+            return statistics;
         }
     }
-}
+
+    }
