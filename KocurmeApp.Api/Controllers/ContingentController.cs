@@ -18,8 +18,19 @@ namespace KocurmeApp.Api.Controllers
         [HttpPost("contingent")]
         public async Task<IActionResult> ImportContingents([FromForm] ImportContingentCommand command)
         {
-            var result = await _mediator.Send(command);
-            return result ? Ok("Import successful!") : BadRequest("Import failed!");
+            try
+            {
+                var result = await _mediator.Send(command);
+                return result ? Ok("Import successful!") : BadRequest("Import failed!");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"İdxal zamanı xəta: {ex.Message}");
+            }
         }
         [HttpGet("{examId}/contingents")]
         public async Task<IActionResult> GetContingentsByExam(int examId)
@@ -30,7 +41,7 @@ namespace KocurmeApp.Api.Controllers
         [HttpDelete("delete-by-exam/{examId}")]
         public async Task<IActionResult> DeleteContingentsByExam(int examId)
         {
-            var result = await _mediator.Send(new DeleteContingentByExamCommand (examId));
+            var result = await _mediator.Send(new DeleteContingentByExamCommand(examId));
             return result ? Ok("All Contingents for the exam deleted.") : NotFound("No contingents found for this exam.");
         }
     }

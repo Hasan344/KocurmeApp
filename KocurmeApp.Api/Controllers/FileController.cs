@@ -165,6 +165,78 @@ namespace KocurmeApp.Api.Controllers
             }
         }
 
+        // ===== 9-cu sinif zal köçürmə analizi =====
+
+        [HttpGet("export/ninth-grade-cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportNinthGradeCheatingAnalysisGet(
+            [FromQuery] int examId,
+            [FromQuery] string? sheetName = null)
+        {
+            try
+            {
+                if (examId <= 0)
+                {
+                    return BadRequest(new { message = "ExamId məcburidir və müsbət olmalıdır" });
+                }
+
+                var command = new Application.Application.Features.FileExports.Commands.Export9thGradeCheatingAnalysisCommand
+                {
+                    ExamId = examId,
+                    SheetName = sheetName ?? "9-cu sinif Zal Köçürmə Analizi"
+                };
+
+                _logger.LogInformation(
+                    "Seçilmiş imtahan üzrə zal köçürmə analizi export başladı (GET). ExamId: {ExamId}",
+                    command.ExamId);
+
+                var result = await _mediator.Send(command);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "9-cu sinif zal köçürmə analizi Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
+        [HttpPost("export/ninth-grade-cheating-analysis")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportNinthGradeCheatingAnalysis(
+            [FromBody] Application.Application.Features.FileExports.Commands.Export9thGradeCheatingAnalysisCommand command)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Seçilmiş imtahan üzrə zal köçürmə analizi export başladı. ExamId: {ExamId}",
+                    command.ExamId);
+
+                var result = await _mediator.Send(command);
+
+                _logger.LogInformation("Excel fayl uğurla yaradıldı: {FileName}", result.FileName);
+
+                return File(
+                    result.FileContent,
+                    result.ContentType,
+                    result.FileName
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "9-cu sinif zal köçürmə analizi Excel export zamanı xəta baş verdi");
+                return StatusCode(500, new { message = "Excel export zamanı xəta baş verdi", error = ex.Message });
+            }
+        }
+
 
     }
 }

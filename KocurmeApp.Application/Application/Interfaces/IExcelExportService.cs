@@ -14,5 +14,12 @@ namespace KocurmeApp.Application.Interfaces
         Task<byte[]> ExportSupervisorCheatingAnalysisToExcelAsync(
         SupervisorCheatingAnalysisExportResult data,
         string sheetName = "Supervisor Analysis");
+
+        /// <summary>
+        /// 9-cu sinif zal köçürmə analizini Excel faylına export edir.
+        /// </summary>
+        Task<byte[]> ExportNinthGradeCheatingAnalysisToExcelAsync(
+            NinthGradeCheatingAnalysisExportResult data,
+            string sheetName = "9-cu sinif Zal Köçürmə Analizi");
     }
 }

@@ -24,6 +24,7 @@ namespace KocurmeApp.Application.Features.Exams.Handlers
 
             exam.Name = request.Name;
             exam.ExamDate = request.ExamDate;
+            exam.Sinif = request.Sinif;
 
             _context.Exams.Update(exam);
             await _context.SaveChangesAsync(cancellationToken);

@@ -25,7 +25,8 @@ namespace KocurmeApp.Application.Features.Exams.Queries
                     Id = e.Id,
                     Name = e.Name,
                     ExamDate = e.ExamDate,
-                    ImportedAt = e.ImportedAt
+                    ImportedAt = e.ImportedAt,
+                    Sinif = e.Sinif
                 }).ToListAsync(cancellationToken);
         }
     }

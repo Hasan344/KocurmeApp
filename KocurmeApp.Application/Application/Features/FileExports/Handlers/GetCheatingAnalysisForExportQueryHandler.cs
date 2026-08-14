@@ -9,12 +9,12 @@ using Microsoft.Extensions.Logging;
 namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetCheatingAnalysisForExport
 {
     public class GetCheatingAnalysisForExportQueryHandler
-        : IRequestHandler<GetCheatingAnalysisForExportQuery,CheatingAnalysisExportResult>
+        : IRequestHandler<GetCheatingAnalysisForExportQuery, CheatingAnalysisExportResult>
     {
         private readonly AppDbContext _context;
         private readonly ILogger<GetCheatingAnalysisForExportQueryHandler> _logger;
 
-        // Age category coefficients
+        // Yaş kateqoriyası əmsalları
         private static readonly Dictionary<int, decimal> AgeCategories = new()
         {
             { 1, 1.00m },
@@ -36,13 +36,14 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
             GetCheatingAnalysisForExportQuery request,
             CancellationToken cancellationToken)
         {
-            var t1 = await (
+            // ---------------------------------------------------------------
+            // 1) SQL: yalnız tərcümə oluna bilən hissə (CheatingStudents + Rooms).
+            //    Kontingent join-u SQL-də NUM_K.ToString() ilə tərcümə oluna
+            //    bilmədiyi üçün onu yaddaşda edirik (aşağıda).
+            // ---------------------------------------------------------------
+            var joined = await (
                 from cs in _context.CheatingStudents
                 join r in _context.Rooms on cs.ZAL1 equals r.Z_KOD
-                join c in _context.Contingents
-                on new { r.ExamId, NumK = r.GR_FL }
-                equals new { c.ExamId, NumK = c.NUM_K.ToString() }
-
                 where cs.ExamId == request.ExamId
                       && r.ExamId == request.ExamId
                       && cs.EYNI_Y >= request.MinEyniY
@@ -51,13 +52,43 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
                     cs.ZAL1,
                     cs.IS_N1,
                     cs.FENN,
-                    Ehtimal = Math.Round(
-                        ((decimal)(cs.EYNI_Y + cs.EYNI_B) / (30 - cs.EYNI_D)) * 100, 2),
-                    Oda_Student_Sayisi = r.KOL_ABT,
-                    YASH_KATEQ = c.YASH_KATEQ
+                    OdaStudentSayisi = r.KOL_ABT,
+                    GrFl = r.GR_FL
                 }
             ).ToListAsync(cancellationToken);
 
+            _logger.LogInformation(
+                "Cheating+Room join nəticəsi: {Count} sətir (ExamId={ExamId}, MinEyniY={MinEyniY})",
+                joined.Count, request.ExamId, request.MinEyniY);
+
+            // ---------------------------------------------------------------
+            // 2) Kontingentləri yaddaşa gətirib NUM_K -> YASH_KATEQ lüğəti qururuq.
+            //    GR_FL string, NUM_K int? olduğu üçün müqayisəni yaddaşda edirik.
+            // ---------------------------------------------------------------
+            var contingents = await _context.Contingents
+                .Where(c => c.ExamId == request.ExamId)
+                .Select(c => new { c.NUM_K, c.YASH_KATEQ })
+                .ToListAsync(cancellationToken);
+
+            var contByNumK = contingents
+                .Where(c => c.NUM_K.HasValue)
+                .GroupBy(c => c.NUM_K!.Value.ToString())
+                .ToDictionary(g => g.Key, g => g.First().YASH_KATEQ);
+
+            // ---------------------------------------------------------------
+            // 3) Yaddaşda inner-join (GR_FL == NUM_K.ToString())
+            // ---------------------------------------------------------------
+            var t1 = joined
+                .Where(x => !string.IsNullOrEmpty(x.GrFl) && contByNumK.ContainsKey(x.GrFl))
+                .Select(x => new
+                {
+                    x.ZAL1,
+                    x.IS_N1,
+                    x.FENN,
+                    OdaStudentSayisi = x.OdaStudentSayisi,
+                    YASH_KATEQ = contByNumK[x.GrFl!]
+                })
+                .ToList();
 
             var summary = t1
                 .GroupBy(x => new { x.ZAL1, x.YASH_KATEQ })
@@ -67,7 +98,7 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
                     g.Key.YASH_KATEQ,
                     KopyaCeken = g.Select(x => x.IS_N1).Distinct().Count(),
                     KopyaFen = g.Select(x => x.FENN).Distinct().Count(),
-                    OdaSayisi = g.Max(x => x.Oda_Student_Sayisi)
+                    OdaSayisi = g.Max(x => x.OdaStudentSayisi)
                 }).ToList();
 
             var t3 = summary.Select(s => new
@@ -85,25 +116,29 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
                     : 0
             }).ToList();
 
-            var avgFaiz1 = t3.Average(x => x.Faiz1);
-            var avgFaiz2 = t3.Average(x => x.Faiz2);
+            // ---------------------------------------------------------------
+            // BOŞLUQ QORUMASI: .Average() boş siyahıda exception atır (500-ün
+            // əsas səbəbi). Sətir yoxdursa 0 götürürük və boş nəticə qaytarırıq.
+            // ---------------------------------------------------------------
+            var avgFaiz1 = t3.Count > 0 ? t3.Average(x => x.Faiz1) : 0m;
+            var avgFaiz2 = t3.Count > 0 ? t3.Average(x => x.Faiz2) : 0m;
 
-            var ageCoeff = new Dictionary<int, decimal>
-    {
-        { 1, 1.00m },
-        { 2, 1.58m },
-        { 3, 1.58m },
-        { 4, 3.68m },
-        { 0, 1.00m }
-    };
+            if (t3.Count == 0)
+            {
+                _logger.LogWarning(
+                    "Analiz üçün uyğun sətir tapılmadı. ExamId={ExamId}. " +
+                    "Səbəb ola bilər: bu imtahan üçün otaq/kontingent import olunmayıb, " +
+                    "ZAL1==Z_KOD uyğunluğu yoxdur, və ya GR_FL==NUM_K uyğunluğu yoxdur.",
+                    request.ExamId);
+            }
 
             var result = t3.Select(x =>
             {
                 var kolon3 = avgFaiz1 > 0 ? Math.Round(x.Faiz1 / avgFaiz1, 2) : 0;
                 var kolon4 = avgFaiz2 > 0 ? Math.Round(x.Faiz2 / avgFaiz2, 2) : 0;
                 var kolon5 = Math.Round((kolon3 + kolon4) / 2, 2);
-                var emsal = ageCoeff.GetValueOrDefault(x.YASH_KATEQ ?? 0, 1);
-                var kolon5Bolunmus = Math.Round(kolon5 / emsal, 2);
+                var emsal = AgeCategories.GetValueOrDefault(x.YASH_KATEQ ?? 0, 1);
+                var kolon5Bolunmus = emsal > 0 ? Math.Round(kolon5 / emsal, 2) : 0;
 
                 return new CheatingAnalysisExportDTO
                 {
@@ -132,7 +167,6 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
                 };
             }).OrderBy(x => x.Kolon5BolunmusEmsal).ToList();
 
-            // Statistika hesablama
             var statistics = CalculateStatistics(result);
 
             return new CheatingAnalysisExportResult
@@ -145,30 +179,30 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
         private List<CheatingStatisticsDTO> CalculateStatistics(List<CheatingAnalysisExportDTO> data)
         {
             var ranges = new List<(decimal Min, decimal Max, string Label)>
-        {
-            (0.0m, 0.2m, "(0-0.2]"),
-            (0.2m, 0.4m, "(0.2-0.4]"),
-            (0.4m, 0.6m, "(0.4-0.6]"),
-            (0.6m, 0.8m, "(0.6-0.8]"),
-            (0.8m, 1.0m, "(0.8-1]"),
-            (1.0m, 1.2m, "(1-1.2]"),
-            (1.2m, 1.4m, "(1.2-1.4]"),
-            (1.4m, 1.6m, "(1.4-1.6]"),
-            (1.6m, 1.8m, "(1.6-1.8]"),
-            (1.8m, 2.0m, "(1.8-2]"),
-            (2.0m, 2.2m, "(2-2.2]"),
-            (2.2m, 2.4m, "(2.2-2.4]"),
-            (2.4m, 2.6m, "(2.4-2.6]"),
-            (2.6m, 2.8m, "(2.6-2.8]"),
-            (2.8m, 3.0m, "(2.8-3]"),
-            (3.0m, 3.2m, "(3-3.2]"),
-            (3.2m, 3.4m, "(3.2-3.4]"),
-            (3.4m, 3.6m, "(3.4-3.6]"),
-            (3.6m, 3.8m, "(3.6-3.8]"),
-            (3.8m, 4.0m, "(3.8-4]"),
-            (4.0m, 4.2m, "(4-4.2]"),
-            (4.2m, 4.4m, "(4.2-4.4]")
-        };
+            {
+                (0.0m, 0.2m, "(0-0.2]"),
+                (0.2m, 0.4m, "(0.2-0.4]"),
+                (0.4m, 0.6m, "(0.4-0.6]"),
+                (0.6m, 0.8m, "(0.6-0.8]"),
+                (0.8m, 1.0m, "(0.8-1]"),
+                (1.0m, 1.2m, "(1-1.2]"),
+                (1.2m, 1.4m, "(1.2-1.4]"),
+                (1.4m, 1.6m, "(1.4-1.6]"),
+                (1.6m, 1.8m, "(1.6-1.8]"),
+                (1.8m, 2.0m, "(1.8-2]"),
+                (2.0m, 2.2m, "(2-2.2]"),
+                (2.2m, 2.4m, "(2.2-2.4]"),
+                (2.4m, 2.6m, "(2.4-2.6]"),
+                (2.6m, 2.8m, "(2.6-2.8]"),
+                (2.8m, 3.0m, "(2.8-3]"),
+                (3.0m, 3.2m, "(3-3.2]"),
+                (3.2m, 3.4m, "(3.2-3.4]"),
+                (3.4m, 3.6m, "(3.4-3.6]"),
+                (3.6m, 3.8m, "(3.6-3.8]"),
+                (3.8m, 4.0m, "(3.8-4]"),
+                (4.0m, 4.2m, "(4-4.2]"),
+                (4.2m, 4.4m, "(4.2-4.4]")
+            };
 
             var statistics = ranges.Select(range => new CheatingStatisticsDTO
             {
@@ -181,5 +215,4 @@ namespace KocurmeApp.Application.Application.Features.FileExport.Queries.GetChea
             return statistics;
         }
     }
-
-    }
+}

@@ -296,5 +296,181 @@ namespace KocurmeApp.Application.Application.Services
             return await package.GetAsByteArrayAsync();
         }
 
+        public async Task<byte[]> ExportNinthGradeCheatingAnalysisToExcelAsync(
+            NinthGradeCheatingAnalysisExportResult data,
+            string sheetName = "9-cu sinif Zal Köçürmə Analizi")
+        {
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add(sheetName);
+
+            var headers = new Dictionary<int, string>
+            {
+                { 1, "Zal" },
+                { 2, "Zalda köçürən abituriyentlərin sayı" },
+                { 3, "Köçürülən fənlərin ümumi sayı" },
+                { 4, "Zalda olan abituriyentlərin sayı" },
+                { 5, "Zalda köçürmə faizi 1" },
+                { 6, "Zalda köçürmə faizi 2" },
+                { 7, "Kolon 3" },
+                { 8, "Kolon 4" },
+                { 9, "Kolon 5" }
+            };
+
+            const int lastCol = 9;
+
+            // HEADER
+            foreach (var header in headers)
+            {
+                var cell = worksheet.Cells[1, header.Key];
+                cell.Value = header.Value;
+                cell.Style.Font.Bold = true;
+                cell.Style.Font.Size = 11;
+                cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+                cell.Style.Font.Color.SetColor(Color.White);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.WrapText = true;
+            }
+
+            worksheet.Row(1).Height = 42;
+
+            // DATA
+            int row = 2;
+            foreach (var item in data.AnalysisData)
+            {
+                // "Orta qiymət" sətri fərqli rənglənir.
+                bool isSummaryRow = item.IsSummary;
+
+                worksheet.Cells[row, 1].Value = item.Zal;
+                worksheet.Cells[row, 2].Value = item.ZaldaKocurenAbituriyentlerinSayi;
+                worksheet.Cells[row, 3].Value = item.KocurulenFenlerinUmumiSayi;
+                worksheet.Cells[row, 4].Value = item.ZaldaOlanAbituriyentlerinSayi;
+                worksheet.Cells[row, 5].Value = item.ZaldaKocurmeFaizi1;
+                worksheet.Cells[row, 6].Value = item.ZaldaKocurmeFaizi2;
+                worksheet.Cells[row, 7].Value = item.Kolon3;
+                worksheet.Cells[row, 8].Value = item.Kolon4;
+                worksheet.Cells[row, 9].Value = item.Kolon5;
+
+                for (int col = 1; col <= lastCol; col++)
+                {
+                    var cell = worksheet.Cells[row, col];
+
+                    cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    if (isSummaryRow)
+                    {
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(217, 217, 217));
+                        cell.Style.Font.Bold = true;
+                    }
+                    else if (row % 2 == 0)
+                    {
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(242, 242, 242));
+                    }
+                    else
+                    {
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.White);
+                    }
+
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                    // Faiz və kolon sütunları üçün ondalıq format
+                    if (col >= 5 && col <= 9 && cell.Value != null)
+                    {
+                        cell.Style.Numberformat.Format = "0.00";
+                    }
+                }
+
+                row++;
+            }
+
+            // COLUMN WIDTHS
+            for (int col = 1; col <= lastCol; col++)
+            {
+                worksheet.Column(col).Width = col switch
+                {
+                    1 => 12,
+                    2 => 18,
+                    3 => 18,
+                    4 => 18,
+                    5 => 14,
+                    6 => 14,
+                    7 => 10,
+                    8 => 10,
+                    9 => 10,
+                    _ => 15
+                };
+            }
+
+            worksheet.Cells[1, 1, row - 1, lastCol].AutoFilter = true;
+            worksheet.View.FreezePanes(2, 1);
+
+            // ===== KÖÇÜRMƏ FAİZİ PAYLANMASI (STATİSTİKA CƏDVƏLİ) =====
+            int statsStartRow = row + 3; // 3 sətir boşluq
+
+            // Başlıq
+            var statsHeaderCell = worksheet.Cells[statsStartRow, 1, statsStartRow, 2];
+            statsHeaderCell.Merge = true;
+            statsHeaderCell.Value = "Köçürmə Faizinə Görə Statistika";
+            statsHeaderCell.Style.Font.Bold = true;
+            statsHeaderCell.Style.Font.Size = 12;
+            statsHeaderCell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+            statsHeaderCell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+            statsHeaderCell.Style.Font.Color.SetColor(Color.White);
+            statsHeaderCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            statsHeaderCell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+            statsStartRow++;
+
+            // Sütun başlıqları
+            var statsCol1 = worksheet.Cells[statsStartRow, 1];
+            statsCol1.Value = "Köçürmə faizi";
+            statsCol1.Style.Font.Bold = true;
+            statsCol1.Style.Fill.PatternType = ExcelFillStyle.Solid;
+            statsCol1.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+            statsCol1.Style.Font.Color.SetColor(Color.White);
+            statsCol1.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            statsCol1.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+            var statsCol2 = worksheet.Cells[statsStartRow, 2];
+            statsCol2.Value = "Köçürmə olan zalların sayı";
+            statsCol2.Style.Font.Bold = true;
+            statsCol2.Style.Fill.PatternType = ExcelFillStyle.Solid;
+            statsCol2.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(79, 129, 189));
+            statsCol2.Style.Font.Color.SetColor(Color.White);
+            statsCol2.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            statsCol2.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+            statsStartRow++;
+
+            // Data
+            foreach (var stat in data.Statistics)
+            {
+                worksheet.Cells[statsStartRow, 1].Value = stat.KocurmeFaiziAraligi;
+                worksheet.Cells[statsStartRow, 2].Value = stat.KocurmeOlanZallarinSayi;
+
+                for (int col = 1; col <= 2; col++)
+                {
+                    var cell = worksheet.Cells[statsStartRow, col];
+
+                    if (statsStartRow % 2 == 0)
+                    {
+                        cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(242, 242, 242));
+                    }
+
+                    cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+
+                statsStartRow++;
+            }
+
+            return await package.GetAsByteArrayAsync();
+        }
+
     }
 }

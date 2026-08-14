@@ -9,25 +9,29 @@ using KocurmeApp.Application.Features.Contingents.Commands;
 
 namespace KocurmeApp.Application.Features.CheatingStudents.Handlers;
 
-    public class ImportContingentsCommandHandler : IRequestHandler<ImportContingentCommand, bool>
-    {
-        private readonly DbfImportService _dbfService;
-        private readonly AppDbContext _context;
+public class ImportContingentsCommandHandler : IRequestHandler<ImportContingentCommand, bool>
+{
+    private readonly DbfImportService _dbfService;
+    private readonly AppDbContext _context;
 
-        public ImportContingentsCommandHandler(DbfImportService dbfService, AppDbContext context)
-        {
-            _dbfService = dbfService;
-            _context = context;
-        }
+    public ImportContingentsCommandHandler(DbfImportService dbfService, AppDbContext context)
+    {
+        _dbfService = dbfService;
+        _context = context;
+    }
 
     public async Task<bool> Handle(ImportContingentCommand request, CancellationToken cancellationToken)
     {
+        if (request.File == null || request.File.Length == 0)
+            throw new InvalidOperationException("İdxal üçün fayl təqdim olunmayıb və ya boşdur.");
+
         var exam = await _context.Exams
             .Include(e => e.Contingents)
             .FirstOrDefaultAsync(e => e.Id == request.ExamId, cancellationToken);
 
         if (exam == null)
-            return false;
+            throw new InvalidOperationException(
+                $"Göstərilən imtahan tapılmadı (ExamId={request.ExamId}). Əvvəlcə imtahan seçin/yaradın.");
 
         using var stream = new MemoryStream();
         await request.File.CopyToAsync(stream, cancellationToken);
@@ -40,10 +44,9 @@ namespace KocurmeApp.Application.Features.CheatingStudents.Handlers;
             student.ExamId = exam.Id;
             exam.Contingents.Add(student);
         }
-             
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;
     }
 }
-

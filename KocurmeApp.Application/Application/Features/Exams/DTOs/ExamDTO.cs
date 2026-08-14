@@ -9,6 +9,7 @@ namespace KocurmeApp.Application.Features.Exams.Dtos
         public string Name { get; set; } = default!;
         public DateTime ExamDate { get; set; }
         public DateTime ImportedAt { get; set; }
+        public int? Sinif { get; set; }
 
         public List<RoomDTO>? Rooms { get; set; }
         public List<CheatingStudentDTO>? CheatingStudents { get; set; }

@@ -25,8 +25,19 @@ namespace KocurmeApp.Api.Controllers
         [HttpPost("cheating-students")]
         public async Task<IActionResult> ImportCheatingStudents([FromForm] ImportCheatingStudentsCommand command)
         {
-            var result = await _mediator.Send(command);
-            return result ? Ok("Import successful!") : BadRequest("Import failed!");
+            try
+            {
+                var result = await _mediator.Send(command);
+                return result ? Ok("Import successful!") : BadRequest("Import failed!");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"İdxal zamanı xəta: {ex.Message}");
+            }
         }
         [HttpGet("{examId}/cheating-students")]
         public async Task<IActionResult> GetCheatingStudentsByExam(int examId)

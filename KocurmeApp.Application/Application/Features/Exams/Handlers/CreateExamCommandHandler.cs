@@ -20,7 +20,8 @@ namespace KocurmeApp.Application.Features.Exams.Handlers
             {
                 Name = request.Name,
                 ExamDate = request.ExamDate ?? DateTime.UtcNow,
-                ImportedAt = DateTime.UtcNow
+                ImportedAt = DateTime.UtcNow,
+                Sinif = request.Sinif
             };
 
             _context.Exams.Add(exam);

@@ -20,8 +20,21 @@ namespace KocurmeApp.Api.Controllers
         [HttpPost("import")]
         public async Task<IActionResult> ImportRooms([FromForm] ImportRoomsCommand command)
         {
-            var result = await _mediator.Send(command);
-            return result ? Ok("Rooms imported successfully!") : BadRequest("Import failed!");
+            try
+            {
+                var result = await _mediator.Send(command);
+                return result ? Ok("Rooms imported successfully!") : BadRequest("Import failed!");
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Yoxlama xətaları (fayl yoxdur, imtahan tapılmadı və s.) — aydın 400 mesajı.
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                // Gözlənilməz xətalar — opaque 500 əvəzinə səbəbi qaytar.
+                return StatusCode(500, $"İdxal zamanı xəta: {ex.Message}");
+            }
         }
 
         [HttpGet("{examId}/rooms")]

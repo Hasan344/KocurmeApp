@@ -8,5 +8,6 @@ namespace KocurmeApp.Application.Features.Exams.Commands
         public int Id { get; set; }
         public string Name { get; set; } = default!;
         public DateTime ExamDate { get; set; }
+        public int? Sinif { get; set; }
     }
 }

@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -11,6 +10,9 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
 {
     public class DbfImportService
     {
+        // Bütün DBF faylları DOS Kiril (cp866) kodlaşdırmasındadır.
+        // Əvvəlki cp1254 (Türk) səhv idi və mətn sahələrini korlayırdı.
+        private static readonly Encoding DbfEncoding = Encoding.GetEncoding(866);
 
         public async Task<List<CheatingStudent>> ImportCheatingStudentsAsync(Stream fileStream)
         {
@@ -26,7 +28,7 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
 
             var options = new DbfDataReaderOptions
             {
-                Encoding = Encoding.GetEncoding(1254),
+                Encoding = DbfEncoding,
                 SkipDeletedRecords = true
             };
 
@@ -62,6 +64,7 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
 
             return students;
         }
+
         public async Task<List<Contingent>> ImportContingentsAsync(Stream fileStream)
         {
             var contingents = new List<Contingent>();
@@ -75,7 +78,7 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
 
             var options = new DbfDataReaderOptions
             {
-                Encoding = Encoding.GetEncoding(1254),
+                Encoding = DbfEncoding,
                 SkipDeletedRecords = true
             };
 
@@ -85,15 +88,15 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
                 {
                     var contingent = new Contingent
                     {
-                        IMT_GUN = GetNullableByte(dbfReader, "IMT_GUN"),
+                        IMT_GUN = GetNullableByte(dbfReader, "IMT_GUN"),      // KONTING.DBF-də yoxdur -> null
                         IMT_YERI = GetNullableByte(dbfReader, "IMT_YERI"),
-                        NUM_K = GetNullableByte(dbfReader, "NUM_K"),
-                        YASH_KATEQ = GetNullableByte(dbfReader, "YASH_KATEQ"),
+                        NUM_K = GetNullableInt(dbfReader, "NUM_K"),           // int: 255-dən böyük ola bilər (məs. 505)
+                        YASH_KATEQ = GetNullableByte(dbfReader, "YASHKATEG"), // faylda sütun adı YASHKATEG-dir (YASH_KATEQ deyil)
                         IZAHI = GetString(dbfReader, "IZAHI"),
                         SEC = GetNullableByte(dbfReader, "SEC"),
-                        TIP_OTUR = GetNullableByte(dbfReader, "TIP_OTUR"),
+                        TIP_OTUR = GetNullableByte(dbfReader, "TIP_OTUR"),    // KONTING.DBF-də yoxdur -> null
                         SAYI = GetNullableShort(dbfReader, "SAYI"),
-                        SAYI0 = GetString(dbfReader, "SAYI0")
+                        SAYI0 = GetString(dbfReader, "SAYI0")                 // KONTING.DBF-də yoxdur -> ""
                     };
                     contingents.Add(contingent);
                 }
@@ -124,6 +127,18 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
             }
             catch { return null; }
         }
+
+        private int? GetNullableInt(DbfDataReader.DbfDataReader reader, string col)
+        {
+            try
+            {
+                var value = reader[col];
+                if (value == null || value == DBNull.Value) return null;
+                return Convert.ToInt32(value);
+            }
+            catch { return null; }
+        }
+
         private byte GetByte(DbfDataReader.DbfDataReader reader, string col)
         {
             try { return Convert.ToByte(reader[col]); }
@@ -154,6 +169,4 @@ namespace KocurmeApp.Infrastructure.Services.FileImport
             catch { return ""; }
         }
     }
-
-
 }

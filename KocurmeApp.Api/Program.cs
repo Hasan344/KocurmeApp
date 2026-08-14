@@ -6,6 +6,11 @@ using Microsoft.OpenApi.Models;
 using KocurmeApp.Infrastructure.Services.FileImport;
 using KocurmeApp.Application.Application;
 using OfficeOpenXml;
+using System.Text;
+
+// DOS/Windows kod səhifələri (866, 1254 və s.) .NET Core-da default gəlmir.
+// DBF idxalında Encoding.GetEncoding(...) çağırışlarının işləməsi üçün provider qeydiyyatdan keçirilir.
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
